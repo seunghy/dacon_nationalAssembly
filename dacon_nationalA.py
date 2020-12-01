@@ -20,8 +20,6 @@ font_location = 'C:/Windows/Fonts/H2GTRE.ttf' # For Windows
 font_name = fm.FontProperties(fname=font_location).get_name()
 matplotlib.rc('font', family=font_name)
 
-# %matplotlib inline
-
 path = "C:/Users/seunghyeon/Desktop/dacon/emotion/open/"
 people = pd.read_csv(path+"new_people.csv", encoding='cp949')
 suggest = pd.read_csv(path+"suggest.csv", encoding='utf-8')
@@ -46,33 +44,8 @@ wc=WordCloud(font_path='C:/Windows/Fonts/H2GTRE.ttf',max_font_size=150, width=60
 plt.imshow(wc,interpolation='bilinear')
 plt.show()
 
-# #위경도
-# gmaps = googlemaps.Client(key="AIzaSyCLW5lk-vulGq62LyhluIeHGybCdVW5vvE")
-# lat = []
-# lng = []
-
-# for name in sub_data['index']:
-#     tmpMap = gmaps.geocode(name)
-#     try:
-#         tmpLoc = tmpMap[0].get('geometry')
-#         print(name)
-#         lat.append(tmpLoc['location']['lat'])
-#         lng.append(tmpLoc['location']['lng'])
-#     except IndexError:
-#         lat.append(999)
-#         lng.append(999)
-    
-# df['lat'] = lat
-# df['lng'] = lng
-
-
 #######################
-#2. 예결위심사/위원회심사/법사위체계자구심사의 상정~의결기간 및 의결~회부기간 비교
-#######################
-
-
-#######################
-#3. 법안별 특성확인
+#2. 법안별 특성확인
 #######################
 process_sub = process[-process['AGE'].isna()]
 process_sub = process_sub[-process_sub['BILL_KIND'].isna()]
@@ -98,9 +71,8 @@ df.plot.area()
 plt.show() #-----21대 국회에 와서 예산안 비율이 높아짐을 확인
 
 
-
 #######################
-# 4. 법안명으로 clustering 
+# 3. 법안명으로 clustering 
 #######################
 ### 4-1. kmeans clustering
 
@@ -109,7 +81,7 @@ docum = list(docum)
 
 kkma = Kkma() ##----------konlpy의 kkma 이용하여 형태소 분석함
 
-sample_size = 1000
+sample_size = 2000
 split_list = []
 for x in range(sample_size):
     temp = docum[x].replace("일부개정법률안","")   #------"일부개정법률안"과 "법률"의 경우 대다수 문장에 포함되어 제외시킴
@@ -143,7 +115,7 @@ df['num']= 0
 for k in range(len(df)):
     df.iloc[k,3] = k
     df.iloc[k,2] = docum[k]
-df.head()
+df.tail()
 
 
 x = normalize(tfidf_fit)
@@ -196,20 +168,20 @@ plt.show()
 
 
 ##word2Vec 이용하여 유사도 확인
-test = Word2Vec(vocab, size=100, window=3, min_count=5, iter=100, sg=1) #window:중심단어 기준 좌우 n개 단어 학습, sg=1:skip_gram
+test = Word2Vec(vocab, size=sample_size/200, window=sample_size*0.05, min_count=sample_size/500, iter=200, sg=1) #window:중심단어 기준 좌우 n개 단어 학습, sg=1:skip_gram
 # print(test.most_similar(positive=['운영'], topn=10))
 # print(test.similarity("농업","농수산물"))
 vocab[:10]
 
-sample = list(pd.DataFrame(sum(vocab,[]))[0].value_counts().index)
-test.most_similar(positive=['세법'], topn=1)[0][1]
+# sample = list(pd.DataFrame(sum(vocab,[]))[0].value_counts().index)
+# test.most_similar(positive=['세법'], topn=1)[0][1]
 
 word_list1 = [] #word2vec을 통해 정제된 단어리스트
 word_list2 = [] #word_list1에 대응하는 단어리스트
 weight_list = [] #word_list1의 단어와 word_list2의 각 단어 간 유사도
 
 for x in test.wv.vocab.keys():
-    temp = test.most_similar(positive=x, topn=5)
+    temp = test.most_similar(positive=x, topn=3)
     for y in range(len(temp)):
         word_list1.append(x)
         word_list2.append(temp[y][0])
@@ -219,8 +191,8 @@ df = pd.DataFrame({"word1":word_list1,"word2":word_list2, "weight":weight_list})
 
 
 #################################################################################
-####################-----------진행중---------################################3
-#1안
+# networkx를 이용한 network 그리기
+# 1안
 font_name = fm.FontProperties(fname="C:/Windows/Fonts/H2GTRE.ttf").get_name()
 
 G = nx.from_pandas_edgelist(df, source="word1",target="word2")
@@ -241,7 +213,6 @@ plt.axis('off')
 plt.show()
 
 #3안
-import math
 node_list = []
 node_list.extend(list(df.word1.unique()))
 node_list.extend(list(df.word2.unique()))
@@ -249,16 +220,48 @@ node_list = set(node_list)  #from, to를 고려하여 unique한 node list생성
 
 edge_list = [(df.iloc[i,0],df.iloc[i,1],df.iloc[i,2]) for i in range(len(df))] #df를 이용하여 edge list 생성
 G = nx.Graph()
-G.add_nodes_from(node_list)
-G.add_edges_from((e[0], e[1],{'weight':e[2]}) for e in edge_list)
-pos = nx.circular_layout(G,k=10, random_state=123)
-degree = dict(nx.pagerank(G)) #nx.degree(G)
-nx.draw_networkx_nodes(G,pos,node_size=[size*80000 for size in degree.values()])
 
-# for edge in G.edges(data='weight'):
-#     nx.draw_networkx_edges(G, pos,width=edge[2]/max(df["weight"])*2)
+G.add_edges_from((e[0], e[1],{'weight':e[2]}) for e in edge_list)
+central = dict(nx.degree(G)) #nx.degree(G)
+G.add_nodes_from((n, {"size":central[n]/max(central.values())*25, "title":n})for n in node_list)
+
+pos = nx.spring_layout(G, random_state=123)
+nx.draw_networkx_nodes(G,pos,node_size=[size/max(central.values()) *300 for size in central.values()])
+
 widths = nx.get_edge_attributes(G, "weight")
-nx.draw_networkx_edges(G, pos, width=[i*1.5 for i in list(widths.values())])
-nx.draw_networkx_labels(G,pos,font_family=font_name,font_size=10)
+nx.draw_networkx_edges(G, pos, width=[i/max(widths.values())*2 for i in list(widths.values())],edge_color="grey")
+nx.draw_networkx_labels(G,pos,font_family=font_name,font_size=15)
 plt.axis('off')
 plt.show()
+
+#################################################################################
+## interactive network - pyvis 이용
+## 1안
+from pyvis.network import Network
+
+net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white")
+
+for e in edge_list:
+    source = e[0]
+    target = e[1]
+    weight = e[2]/max(edge_list)[2] * 100
+
+    net.add_node(source,source, title=source)
+    net.add_node(target, target, title=target)
+    net.add_edge(source, target, title=weight)
+
+neighbor = net.get_adj_list()
+for n in net.nodes:
+    n["title"] += "의 이웃노드:<br>" + "<br>".join(neighbor[n["id"]])
+
+net.show("billNetwork.html")
+
+##2안--기존의 networkx를 이용한 그래프 이용
+net = Network(height="750px", width="120%", bgcolor="#222222", font_color="white")
+net.from_nx(G)
+
+neighbor = net.get_adj_list()
+for n in net.nodes:
+    n["title"] += "의 인접노드:<br>" + "<br>".join(neighbor[n["id"]])
+
+net.show("billNetwork.html")

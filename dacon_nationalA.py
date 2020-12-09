@@ -21,7 +21,8 @@ font_location = 'C:/Windows/Fonts/H2GTRE.ttf' # For Windows
 font_name = fm.FontProperties(fname=font_location).get_name()
 matplotlib.rc('font', family=font_name)
 
-path = "C:/Users/seunghyeon/Desktop/dacon/emotion/open/"
+# path = "C:/Users/seunghyeon/Desktop/dacon/emotion/open/"
+path = "C:/Users/10188/Desktop/dacon/emotion/open/"
 people = pd.read_csv(path+"new_people.csv", encoding='cp949')
 suggest = pd.read_csv(path+"suggest.csv", encoding='utf-8')
 process = pd.read_csv(path+"process.csv", encoding='utf-8')
@@ -108,6 +109,24 @@ ax2 = ax1.twinx()
 ax2.set_ylabel("예산안 건수(bar)")
 ax2 = sns.barplot(x=df.index,y="예산안",data=df, ax=ax2, alpha=0.5)
 plt.show()
+
+# 번회 (TMI)
+# 의결결과 vs [기권, 반대, 총투표수, 찬성] 
+# --> 기권, 반대, 총투표수, 찬성은 20,21대 국회의 일부자료만 남아있음
+# 가설1
+# H0: 의안활동구분(bill_kind)은 총투표수에 영향없음. H1: 의안활동구분은 총투표수에 영향있음
+process.head()
+
+process_sub = drop_nas(process, 'BILL_KIND')
+process_sub = drop_nas(process, 'VOTE_TCNT')
+process_sub[['AGE','BILL_KIND','VOTE_TCNT']]
+process_sub['AGE'].unique()  #20대, 21대 국회자료만 존재
+
+#1 20대 국회의 경우 확인
+process_sub20 = process_sub[process_sub['AGE']==20]
+sns.barplot(data=process_sub20, x='BILL_KIND',y='VOTE_TCNT')
+plt.show()
+
 
 
 # def show_conditional(df, var1, value1, var2,value2):
